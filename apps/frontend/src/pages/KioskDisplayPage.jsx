@@ -1,6 +1,52 @@
 import { CircleDashed, LoaderCircle, QrCode, ScanLine, Sparkles } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
+const DEFAULT_PORTAL_HOST = "10.42.0.1";
+
+function isUsableHost(hostname) {
+  if (!hostname) {
+    return false;
+  }
+
+  const normalizedHost = String(hostname).trim().toLowerCase();
+  return normalizedHost !== "localhost" && normalizedHost !== "127.0.0.1" && normalizedHost !== "::1";
+}
+
+function extractHostFromUrl(url) {
+  if (!url) {
+    return "";
+  }
+
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "";
+  }
+}
+
+function resolvePortalHost() {
+  const currentHost = typeof window !== "undefined" ? window.location.hostname : "";
+
+  if (isUsableHost(currentHost)) {
+    return currentHost;
+  }
+
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "";
+  const apiHost = extractHostFromUrl(apiBaseUrl);
+
+  if (isUsableHost(apiHost)) {
+    return apiHost;
+  }
+
+  return DEFAULT_PORTAL_HOST;
+}
+
+function buildPortalUrl() {
+  const protocol = typeof window !== "undefined" ? window.location.protocol : "http:";
+  const portalHost = resolvePortalHost();
+  return `${protocol}//${portalHost}/portal`;
+}
+
 const STATUS_META = {
   "Waiting for bottle...": {
     title: "Ready",
@@ -48,7 +94,7 @@ function KioskDisplayPage({ status }) {
   const detectionStatus = status?.detectionStatus ?? "Waiting for bottle...";
   const meta = STATUS_META[detectionStatus] ?? STATUS_META["Waiting for bottle..."];
   const StatusIcon = meta.icon;
-  const qrValue = "http://10.42.0.1/portal";
+  const qrValue = buildPortalUrl();
   const voucherCode = status?.session?.voucherCode ?? qrValue;
   const deviceLabel = status?.session?.deviceLabel ?? "Eco Piso WiFi kiosk";
 
