@@ -1,11 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 
 export function useSessionCountdown(initialSeconds) {
-  const [remainingSeconds, setRemainingSeconds] = useState(initialSeconds);
+  const [remainingSeconds, setRemainingSeconds] = useState(() => Math.max(0, Math.floor(initialSeconds || 0)));
 
   useEffect(() => {
-    setRemainingSeconds(initialSeconds);
+    setRemainingSeconds(Math.max(0, Math.floor(initialSeconds || 0)));
   }, [initialSeconds]);
+
+  useEffect(() => {
+    if (remainingSeconds <= 0) {
+      return undefined;
+    }
+
+    const intervalId = setInterval(() => {
+      setRemainingSeconds((previous) => Math.max(0, previous - 1));
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [remainingSeconds]);
 
   const formatted = useMemo(() => {
     const minutes = Math.floor(remainingSeconds / 60);
