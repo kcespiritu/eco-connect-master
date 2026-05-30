@@ -29,7 +29,7 @@
 3. **Copy systemd units**
    ```bash
    sudo cp deploy/systemd/ecoconnect-backend.service /etc/systemd/system/
-   sudo cp deploy/systemd/ecoconnect-detector.service /etc/systemd/system/
+   sudo cp deploy/systemd/ecoconnect-detect.service /etc/systemd/system/
    sudo systemctl daemon-reload
    ```
 
@@ -44,21 +44,14 @@ Use the included script from project root:
 ```
 
 This will:
-- optionally pull latest code (if `GIT_PULL=1`)
 - create `.env` from `.env.example` if missing
 - run `pnpm install`
-- start backend in dev mode
+- start backend in dev mode (background)
 
 For Linux/systemd deployment:
 
 ```bash
 ./deploy.sh prod
-```
-
-Optional with repository update:
-
-```bash
-GIT_PULL=1 ./deploy.sh prod
 ```
 
 ### Development
@@ -71,19 +64,19 @@ Server starts on `http://localhost:3000`
 ```bash
 # Enable auto-start on boot
 sudo systemctl enable ecoconnect-backend
-sudo systemctl enable ecoconnect-detector
+sudo systemctl enable ecoconnect-detect
 
 # Start services
 sudo systemctl start ecoconnect-backend
-sudo systemctl start ecoconnect-detector
+sudo systemctl start ecoconnect-detect
 
 # Check status
 sudo systemctl status ecoconnect-backend
-sudo systemctl status ecoconnect-detector
+sudo systemctl status ecoconnect-detect
 
 # View logs
 sudo journalctl -u ecoconnect-backend -f
-sudo journalctl -u ecoconnect-detector -f
+sudo journalctl -u ecoconnect-detect -f
 ```
 
 ## API Health Check
@@ -106,26 +99,3 @@ Expected response:
 - **Database locked**: Ensure only one instance is running. Check for orphaned processes.
 - **Port 3000 in use**: Change `PORT` in `.env` or kill conflicting process.
 
-## Avoid GitHub Username/Token Prompts
-
-If `GIT_PULL=1` asks for GitHub username/token, switch your remote to SSH and use a key.
-
-1. Generate key (if missing):
-   ```bash
-   ssh-keygen -t ed25519 -C "your-email@example.com"
-   ```
-2. Add public key to GitHub:
-   ```bash
-   cat ~/.ssh/id_ed25519.pub
-   ```
-   Copy it into GitHub -> Settings -> SSH and GPG keys.
-3. Change remote to SSH:
-   ```bash
-   git remote set-url origin git@github.com:<owner>/<repo>.git
-   ```
-4. Test:
-   ```bash
-   ssh -T git@github.com
-   ```
-
-This removes repeated username/token prompts in deploy scripts.

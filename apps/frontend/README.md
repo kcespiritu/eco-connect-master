@@ -55,25 +55,20 @@ npm run dev
 Use the included script:
 
 ```bash
-./deploy.sh dev
+./deploy.sh
 ```
 
 This will:
-- optionally pull latest code (if `GIT_PULL=1`)
-- create `.env.local` from `.env.example` if missing
+- create `.env` from `.env.example` if missing
 - run `pnpm install`
-- run `pnpm run dev:lan`
+- run `pnpm run build`
+- sync `dist/` to nginx web root
+- restart nginx
 
-Production build:
-
-```bash
-./deploy.sh prod
-```
-
-Optional dist sync to web root:
+Optional environment variables:
 
 ```bash
-DEPLOY_DIST=1 DEPLOY_TARGET_DIR=/var/www/ecoconnect ./deploy.sh prod
+WEB_ROOT=/var/www/html SITE_URL=http://10.42.0.1/ KIOSK_URL=http://10.42.0.1/kiosk ./deploy.sh
 ```
 
 ## LAN Testing (Phone + Multiple Devices)

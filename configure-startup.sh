@@ -140,6 +140,11 @@ fi
 echo "[STEP] Reloading systemd daemon"
 sudo systemctl daemon-reload
 
+if systemctl list-unit-files | grep -q '^ecoconnect-detector\.service'; then
+  echo "[STEP] Disabling legacy ecoconnect-detector.service"
+  sudo systemctl disable --now ecoconnect-detector.service || true
+fi
+
 echo "[STEP] Enabling services at boot"
 sudo systemctl enable ecoconnect-network.service ecoconnect-ir.service ecoconnect-cam.service ecoconnect-detect.service ecoconnect-backend.service ecoconnect-frontend.service
 

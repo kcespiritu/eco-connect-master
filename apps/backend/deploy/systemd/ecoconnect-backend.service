@@ -1,7 +1,7 @@
 [Unit]
 Description=EcoConnect Backend API
 After=network.target
-Wants=ecoconnect-detector.service
+Wants=ecoconnect-detect.service
 
 [Service]
 Type=simple

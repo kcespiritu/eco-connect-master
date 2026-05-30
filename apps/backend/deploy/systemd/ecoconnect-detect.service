@@ -1,0 +1,17 @@
+[Unit]
+Description=EcoConnect Detect Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/ecoconnect
+EnvironmentFile=-/etc/default/ecoconnect
+ExecStart=/bin/bash -lc '"${DETECT_PYTHON:-/usr/bin/python3}" /opt/ecoconnect/hardware/detect.py'
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ecoconnect-detect
+
+[Install]
+WantedBy=multi-user.target
