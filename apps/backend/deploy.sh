@@ -93,6 +93,42 @@ stop_dev() {
   echo "[INFO] Backend dev server stopped"
 }
 
+stop_dev_fallback() {
+  local patterns=(
+    "nodemon src/server.js"
+    "node src/server.js"
+    "pnpm run dev"
+  )
+
+  local found_any=0
+
+  for pattern in "${patterns[@]}"; do
+    local pids
+    pids="$(pgrep -f "$pattern" 2>/dev/null || true)"
+    if [[ -n "$pids" ]]; then
+      found_any=1
+      echo "[WARN] Killing stray backend process(es) matching: $pattern"
+      for pid in $pids; do
+        kill "$pid" >/dev/null 2>&1 || true
+      done
+    fi
+  done
+
+  if [[ "$found_any" == "1" ]]; then
+    sleep 1
+
+    for pattern in "${patterns[@]}"; do
+      local pids
+      pids="$(pgrep -f "$pattern" 2>/dev/null || true)"
+      for pid in $pids; do
+        kill -9 "$pid" >/dev/null 2>&1 || true
+      done
+    done
+
+    echo "[INFO] Backend fallback cleanup complete"
+  fi
+}
+
 deploy_systemd() {
   if [[ "$(uname -s)" != "Linux" ]]; then
     echo "[ERROR] systemd deployment is supported on Linux only."
@@ -151,6 +187,7 @@ case "$MODE" in
     ;;
   stop)
     stop_dev
+    stop_dev_fallback
     ;;
   -h|--help|help)
     usage
