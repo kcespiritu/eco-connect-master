@@ -53,14 +53,44 @@ run_dev() {
   fi
 
   echo "[STEP] Starting backend in dev mode (background)"
-  nohup pnpm run dev >"$log_file" 2>&1 &
+  setsid pnpm run dev >"$log_file" 2>&1 &
   local pid=$!
   echo "$pid" > "$pid_file"
 
   echo "[INFO] Backend started in background."
   echo "[INFO] PID: $pid"
   echo "[INFO] Logs: $ROOT_DIR/$log_file"
-  echo "[INFO] To stop: kill $pid && rm -f $ROOT_DIR/$pid_file"
+  echo "[INFO] To stop: kill -- -$pid && rm -f $ROOT_DIR/$pid_file"
+}
+
+stop_dev() {
+  local pid_file=".backend-dev.pid"
+
+  if [[ ! -f "$pid_file" ]]; then
+    echo "[INFO] Backend dev server not running (no PID file)."
+    return 0
+  fi
+
+  local pid
+  pid="$(cat "$pid_file")"
+
+  if [[ -z "$pid" ]] || ! kill -0 "$pid" >/dev/null 2>&1; then
+    echo "[INFO] Backend dev server already stopped (stale PID: ${pid:-unknown})."
+    rm -f "$pid_file"
+    return 0
+  fi
+
+  echo "[STEP] Stopping backend dev server (process group: $pid)"
+  kill -- "-$pid" >/dev/null 2>&1 || kill "$pid" >/dev/null 2>&1 || true
+  sleep 1
+
+  if kill -0 "$pid" >/dev/null 2>&1; then
+    echo "[WARN] Backend dev server did not stop after SIGTERM; sending SIGKILL"
+    kill -9 -- "-$pid" >/dev/null 2>&1 || kill -9 "$pid" >/dev/null 2>&1 || true
+  fi
+
+  rm -f "$pid_file"
+  echo "[INFO] Backend dev server stopped"
 }
 
 deploy_systemd() {
@@ -97,10 +127,12 @@ usage() {
 Usage:
   ./deploy.sh dev
   ./deploy.sh prod
+  ./deploy.sh stop
 
 Modes:
   dev   Install deps, ensure .env, and run pnpm run dev in background
   prod  Install deps, ensure .env, and deploy/restart systemd units (Linux)
+  stop  Stop the background dev server started by dev mode
 EOF
 }
 
@@ -116,6 +148,9 @@ case "$MODE" in
     ensure_env
     install_deps
     deploy_systemd
+    ;;
+  stop)
+    stop_dev
     ;;
   -h|--help|help)
     usage

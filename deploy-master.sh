@@ -199,12 +199,12 @@ stop_managed_process() {
 	fi
 
 	echo "[STEP] Stopping $name (PID: $pid)"
-	kill "$pid" >/dev/null 2>&1 || true
+	kill -- "-$pid" >/dev/null 2>&1 || kill "$pid" >/dev/null 2>&1 || true
 	sleep 1
 
 	if is_pid_running "$pid"; then
 		echo "[WARN] $name did not stop after SIGTERM; sending SIGKILL"
-		kill -9 "$pid" >/dev/null 2>&1 || true
+		kill -9 -- "-$pid" >/dev/null 2>&1 || kill -9 "$pid" >/dev/null 2>&1 || true
 	fi
 
 	rm -f "$pid_file"
@@ -327,6 +327,14 @@ stop_all() {
 	stop_managed_process "hardware-ir"
 	stop_managed_process "hardware-cam"
 	stop_managed_process "hardware-detect"
+
+	if [[ -f "$BACKEND_SCRIPT" ]]; then
+		echo "[STEP] Stopping backend dev server"
+		(
+			cd "$BACKEND_DIR"
+			bash "$BACKEND_SCRIPT" stop
+		)
+	fi
 
 	if command -v systemctl >/dev/null 2>&1; then
 		ensure_sudo_access
