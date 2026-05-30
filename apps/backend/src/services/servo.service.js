@@ -1,4 +1,3 @@
-const { SerialPort } = require("serialport");
 const createLogger = require("../utils/logger");
 
 const log = createLogger("SERVO");
@@ -8,11 +7,18 @@ const OPEN_COMMAND = String(process.env.SERVO_OPEN_COMMAND || "o");
 const CLOSE_COMMAND = String(process.env.SERVO_CLOSE_COMMAND || "c");
 const READY_DELAY_MS = parseInt(process.env.SERVO_READY_DELAY_MS || "1500", 10);
 const PORT_HINT = String(process.env.SERVO_PORT || "").trim();
+const MOCK_SERVO = process.env.SERVO_MOCK === "1" || PORT_HINT === "mock";
+
+let SerialPort = null;
+if (!MOCK_SERVO) {
+  ({ SerialPort } = require("serialport"));
+}
 
 let activePort = null;
 let activePortPath = null;
 let isReady = false;
 let commandQueue = Promise.resolve();
+let mockServoState = "closed";
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -28,6 +34,10 @@ function scorePort(portPath) {
 }
 
 async function resolvePortPath() {
+  if (MOCK_SERVO) {
+    return "mock";
+  }
+
   if (PORT_HINT) {
     return PORT_HINT;
   }
@@ -53,6 +63,10 @@ async function resolvePortPath() {
 }
 
 async function ensureOpenPort() {
+  if (MOCK_SERVO) {
+    return null;
+  }
+
   if (activePort && activePort.isOpen) {
     return activePort;
   }
@@ -105,6 +119,15 @@ async function ensureOpenPort() {
 }
 
 async function sendRawCommand(command) {
+  if (MOCK_SERVO) {
+    mockServoState = command === OPEN_COMMAND ? "open" : command === CLOSE_COMMAND ? "closed" : mockServoState;
+    log.info("Mock servo command accepted", {
+      command,
+      state: mockServoState
+    });
+    return;
+  }
+
   const port = await ensureOpenPort();
 
   await new Promise((resolve, reject) => {
@@ -129,18 +152,24 @@ async function sendRawCommand(command) {
 }
 
 function enqueueCommand(command) {
-  commandQueue = commandQueue.then(() => sendRawCommand(command));
-  return commandQueue;
+  const nextCommand = commandQueue.catch(() => undefined).then(() => sendRawCommand(command));
+
+  commandQueue = nextCommand.then(
+    () => undefined,
+    () => undefined
+  );
+
+  return nextCommand;
 }
 
 async function openGate() {
   await enqueueCommand(OPEN_COMMAND);
-  return { ok: true, command: OPEN_COMMAND, path: activePortPath };
+  return { ok: true, command: OPEN_COMMAND, path: MOCK_SERVO ? "mock" : activePortPath };
 }
 
 async function closeGate() {
   await enqueueCommand(CLOSE_COMMAND);
-  return { ok: true, command: CLOSE_COMMAND, path: activePortPath };
+  return { ok: true, command: CLOSE_COMMAND, path: MOCK_SERVO ? "mock" : activePortPath };
 }
 
 module.exports = {
