@@ -112,8 +112,28 @@ function App() {
       transports: ["websocket", "polling"]
     });
 
-    const onProcessStatus = () => {
-      loadStatus({ keepLoading: true });
+    const onProcessStatus = (payload) => {
+      const nextProcess = payload?.state;
+      const reason = payload?.reason;
+
+      if (nextProcess && typeof nextProcess === "object") {
+        setStatus((previousStatus) => {
+          const safePrevious = previousStatus || getInitialStatus();
+          return {
+            ...safePrevious,
+            process: {
+              ...INITIAL_PROCESS,
+              ...nextProcess
+            },
+            detectionStatus: nextProcess.pipelineStatus || safePrevious.detectionStatus
+          };
+        });
+      }
+
+      // Keep session/credits in sync after reward events or first socket sync.
+      if (reason === "CREDIT_ADDED" || reason === "INITIAL_SYNC") {
+        loadStatus({ keepLoading: true });
+      }
     };
 
     socket.on("process:status", onProcessStatus);
