@@ -16,7 +16,7 @@ picam2 = Picamera2()
 
 # IMPORTANT: NO preview, NO GUI pipeline
 config = picam2.create_video_configuration(
-    main={"size": (3280, 2464)},
+    main={"size": (1640, 1232)},
     controls={"FrameRate": 10}
 )
 
