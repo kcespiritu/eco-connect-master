@@ -148,6 +148,7 @@ install_unit "ecoconnect-frontend.service" "$frontend_unit"
 
 echo "[STEP] Ensuring persistent directories"
 sudo mkdir -p "$PERSIST_BASE_DIR" "$PERSIST_RUNTIME_DIR" "$PERSIST_DETECT_OUTPUT_DIR"
+sudo chown -R "${APP_USER}:${APP_USER}" "$PERSIST_BASE_DIR"
 
 if [[ ! -f "$STARTUP_ENV_FILE" ]]; then
   echo "[STEP] Creating startup env file at ${STARTUP_ENV_FILE}"
