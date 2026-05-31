@@ -134,7 +134,7 @@ Requires=ecoconnect-backend.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/bin/env bash -lc 'systemctl start nginx'
+ExecStart=/usr/bin/env true
 
 [Install]
 WantedBy=multi-user.target"
