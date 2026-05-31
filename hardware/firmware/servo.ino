@@ -9,7 +9,7 @@ int closedPos = 10;
 int openPos = 180;
 int currentPos = 10;
 
-const unsigned long keepAliveIntervalMs = 5000;  // every 20s — tighter margin for power banks
+const unsigned long keepAliveIntervalMs = 5000;  // every 5s — tighter margin for power banks
 const int keepAliveStep = 8;                       // 8 deg is enough to draw current without being visible
 const unsigned long keepAlivePulseMs = 350;        // 350ms lets the servo physically move and load
 
