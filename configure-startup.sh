@@ -83,6 +83,7 @@ Requires=ecoconnect-network.service
 [Service]
 Type=simple
 WorkingDirectory=${ROOT_DIR}
+EnvironmentFile=-${STARTUP_ENV_FILE}
 ExecStart=/usr/bin/env python3 ${ROOT_DIR}/hardware/cam.py
 Restart=always
 RestartSec=3
@@ -92,8 +93,8 @@ WantedBy=multi-user.target"
 
 detect_unit="[Unit]
 Description=EcoConnect Detect Service
-After=ecoconnect-network.service
-Requires=ecoconnect-network.service
+After=ecoconnect-network.service ecoconnect-cam.service
+Requires=ecoconnect-network.service ecoconnect-cam.service
 
 [Service]
 Type=simple
