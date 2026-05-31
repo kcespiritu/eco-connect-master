@@ -10,6 +10,7 @@ const DETECTION_CONFIDENCE = parseFloat(process.env.REWARD_DETECTION_CONFIDENCE 
 const DEBUG_PROCESS_LOGS = process.env.DEBUG_PROCESS_LOGS === "1";
 const log = createLogger("PROCESS");
 let emitProcessState = () => {};
+let autoResetTimer = null;
 
 function debugLog(message, meta) {
   if (DEBUG_PROCESS_LOGS) {
@@ -35,6 +36,36 @@ function initialState() {
 }
 
 let processState = initialState();
+
+function clearAutoResetTimer() {
+  if (autoResetTimer) {
+    clearTimeout(autoResetTimer);
+    autoResetTimer = null;
+  }
+}
+
+function scheduleAutoReset(delayMs) {
+  clearAutoResetTimer();
+
+  const normalizedDelay = Math.max(0, Math.floor(delayMs || 0));
+  if (normalizedDelay === 0) {
+    return;
+  }
+
+  autoResetTimer = setTimeout(() => {
+    processState = {
+      ...initialState(),
+      cooldownUntil: 0
+    };
+
+    notify("AUTO_RESET");
+    autoResetTimer = null;
+  }, normalizedDelay);
+
+  if (typeof autoResetTimer.unref === "function") {
+    autoResetTimer.unref();
+  }
+}
 
 function getProcessState() {
   return {
@@ -71,6 +102,7 @@ function isLocked() {
 
 async function startRequest(sessionToken) {
   debugLog("startRequest called", { sessionToken });
+  clearAutoResetTimer();
   const session = await getSession(sessionToken);
 
   if (!session) {
@@ -140,6 +172,7 @@ async function startRequest(sessionToken) {
 
 function setDecision(decision) {
   debugLog("setDecision called", { decision, requestId: processState.requestId });
+  clearAutoResetTimer();
   if (!processState.requestActive || processState.yoloDecision !== "pending") {
     log.warn("setDecision rejected: flow not ready", {
       requestActive: processState.requestActive,
@@ -189,6 +222,7 @@ function setDecision(decision) {
 
 async function setServo(opened) {
   debugLog("setServo called", { opened, requestId: processState.requestId });
+  clearAutoResetTimer();
 
   if (opened) {
     if (!processState.requestActive || processState.yoloDecision !== "valid") {
@@ -380,6 +414,9 @@ async function triggerIrReward() {
     pipelineStatus
   };
 
+  // Return to idle automatically after cooldown so kiosk UI does not get stuck on success state.
+  scheduleAutoReset(REWARD_COOLDOWN_MS);
+
   if (rewardGranted) {
     notify("CREDIT_ADDED", {
       requestId: completedRequestId,
@@ -416,6 +453,7 @@ async function resetProcess() {
     previousRequestId: processState.requestId,
     previousStatus: processState.pipelineStatus
   });
+  clearAutoResetTimer();
 
   try {
     await servoService.closeGate();
