@@ -128,14 +128,14 @@ WantedBy=multi-user.target"
 
 frontend_unit="[Unit]
 Description=EcoConnect Frontend Runtime (Nginx)
-After=ecoconnect-backend.service nginx.service
+After=nginx.service
 Wants=nginx.service
-Requires=ecoconnect-backend.service
 
 [Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/usr/bin/env true
+Type=simple
+ExecStartPre=/usr/bin/systemctl start nginx.service
+ExecStart=/usr/bin/sleep infinity
+ExecStop=/usr/bin/systemctl stop nginx.service
 
 [Install]
 WantedBy=multi-user.target"
