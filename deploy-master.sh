@@ -350,6 +350,7 @@ show_status() {
 	status_systemd_service "ecoconnect-detect"
 	status_systemd_service "ecoconnect-backend"
 	status_systemd_service "ecoconnect-frontend"
+	status_systemd_service "ecoconnect-kiosk"
 
 	# Legacy service is shown for troubleshooting migration conflicts.
 	status_systemd_service "ecoconnect-detector"
@@ -372,6 +373,7 @@ stop_all() {
 	if command -v systemctl >/dev/null 2>&1; then
 		ensure_sudo_access
 		echo "[STEP] Stopping ecoconnect systemd services (if installed)"
+		sudo systemctl stop ecoconnect-kiosk.service 2>/dev/null || true
 		sudo systemctl stop ecoconnect-frontend.service 2>/dev/null || true
 		sudo systemctl stop ecoconnect-backend.service 2>/dev/null || true
 		sudo systemctl stop ecoconnect-detect.service 2>/dev/null || true

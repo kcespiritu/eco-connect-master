@@ -170,7 +170,7 @@ async function startRequest(sessionToken) {
   };
 }
 
-function setDecision(decision) {
+async function setDecision(decision) {
   debugLog("setDecision called", { decision, requestId: processState.requestId });
   clearAutoResetTimer();
   if (!processState.requestActive || processState.yoloDecision !== "pending") {
@@ -190,11 +190,41 @@ function setDecision(decision) {
       ...processState,
       cameraActive: false,
       yoloDecision: "valid",
-      pipelineStatus: "Valid bottle detected",
+      pipelineStatus: "Valid bottle detected, opening gate",
       lastReason: null
     };
 
     notify("VALID_BOTTLE");
+
+    try {
+      await servoService.openGate();
+    } catch (error) {
+      log.error("setDecision(valid) failed: servo open command error", {
+        message: error.message
+      });
+
+      processState = {
+        ...processState,
+        pipelineStatus: "Valid bottle detected, waiting for servo",
+        lastReason: "SERVO_OPEN_FAILED"
+      };
+
+      notify("SERVO_OPEN_FAILED");
+
+      return {
+        ok: false,
+        reason: "SERVO_COMMAND_FAILED",
+        state: getProcessState()
+      };
+    }
+
+    processState = {
+      ...processState,
+      servoGateOpened: true,
+      pipelineStatus: "Servo gate opened"
+    };
+
+    notify("SERVO_OPENED");
 
     return {
       ok: true,

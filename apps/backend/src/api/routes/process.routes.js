@@ -48,7 +48,7 @@ router.post("/start", async (req, res) => {
   }
 });
 
-router.post("/admin/decision", (req, res) => {
+router.post("/admin/decision", async (req, res) => {
   try {
     const { decision } = req.body;
     console.log("[PROCESS_ROUTE] POST /admin/decision", { decision });
@@ -58,7 +58,7 @@ router.post("/admin/decision", (req, res) => {
       return res.status(400).json(failure("decision must be valid or invalid"));
     }
 
-    const result = setDecision(decision);
+    const result = await setDecision(decision);
 
     if (!result.ok) {
       console.warn("[PROCESS_ROUTE] /admin/decision conflict", { reason: result.reason });

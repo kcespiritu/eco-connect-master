@@ -140,12 +140,31 @@ ExecStart=/usr/bin/env true
 [Install]
 WantedBy=multi-user.target"
 
+kiosk_unit="[Unit]
+Description=EcoConnect Kiosk Browser
+After=ecoconnect-frontend.service graphical.target display-manager.service
+Wants=ecoconnect-frontend.service graphical.target display-manager.service
+
+[Service]
+Type=simple
+User=${APP_USER}
+WorkingDirectory=${ROOT_DIR}/apps/frontend
+Environment=APP_USER=${APP_USER}
+EnvironmentFile=-${STARTUP_ENV_FILE}
+ExecStart=/usr/bin/env bash ${ROOT_DIR}/apps/frontend/kiosk.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target"
+
 install_unit "ecoconnect-network.service" "$network_unit"
 install_unit "ecoconnect-ir.service" "$ir_unit"
 install_unit "ecoconnect-cam.service" "$cam_unit"
 install_unit "ecoconnect-detect.service" "$detect_unit"
 install_unit "ecoconnect-backend.service" "$backend_unit"
 install_unit "ecoconnect-frontend.service" "$frontend_unit"
+install_unit "ecoconnect-kiosk.service" "$kiosk_unit"
 
 echo "[STEP] Ensuring persistent directories"
 sudo mkdir -p "$PERSIST_BASE_DIR" "$PERSIST_RUNTIME_DIR" "$PERSIST_DETECT_OUTPUT_DIR"
@@ -164,6 +183,12 @@ NETWORK_TMP_DIR=/var/lib/ecoconnect/runtime
 SHARED_FRAME_PATH=/var/lib/ecoconnect/frame.jpg
 DETECT_OUTPUT_DIR=/var/lib/ecoconnect/output_frames
 ECOCONNECT_DB_PATH=/var/lib/ecoconnect/ecoconnect.db
+
+# Kiosk browser settings
+KIOSK_URL=http://10.42.0.1/kiosk
+KIOSK_DISPLAY=:0
+KIOSK_BROWSER=
+KIOSK_BROWSER_EXTRA_ARGS=
 EOF
 fi
 
@@ -171,6 +196,10 @@ ensure_env_key "$STARTUP_ENV_FILE" "NETWORK_TMP_DIR" "/var/lib/ecoconnect/runtim
 ensure_env_key "$STARTUP_ENV_FILE" "SHARED_FRAME_PATH" "/var/lib/ecoconnect/frame.jpg"
 ensure_env_key "$STARTUP_ENV_FILE" "DETECT_OUTPUT_DIR" "/var/lib/ecoconnect/output_frames"
 ensure_env_key "$STARTUP_ENV_FILE" "ECOCONNECT_DB_PATH" "/var/lib/ecoconnect/ecoconnect.db"
+ensure_env_key "$STARTUP_ENV_FILE" "KIOSK_URL" "http://10.42.0.1/kiosk"
+ensure_env_key "$STARTUP_ENV_FILE" "KIOSK_DISPLAY" ":0"
+ensure_env_key "$STARTUP_ENV_FILE" "KIOSK_BROWSER" ""
+ensure_env_key "$STARTUP_ENV_FILE" "KIOSK_BROWSER_EXTRA_ARGS" ""
 
 echo "[STEP] Reloading systemd daemon"
 sudo systemctl daemon-reload
@@ -181,7 +210,7 @@ if systemctl list-unit-files | grep -q '^ecoconnect-detector\.service'; then
 fi
 
 echo "[STEP] Enabling services at boot"
-sudo systemctl enable ecoconnect-network.service ecoconnect-ir.service ecoconnect-cam.service ecoconnect-detect.service ecoconnect-backend.service ecoconnect-frontend.service
+sudo systemctl enable ecoconnect-network.service ecoconnect-ir.service ecoconnect-cam.service ecoconnect-detect.service ecoconnect-backend.service ecoconnect-frontend.service ecoconnect-kiosk.service
 
 echo "[STEP] Starting services now"
 sudo systemctl restart ecoconnect-network.service
@@ -190,6 +219,7 @@ sudo systemctl restart ecoconnect-cam.service
 sudo systemctl restart ecoconnect-detect.service
 sudo systemctl restart ecoconnect-backend.service
 sudo systemctl restart ecoconnect-frontend.service
+sudo systemctl restart ecoconnect-kiosk.service
 
 echo "[SUCCESS] Startup configured. Services will auto-run on reboot."
 echo "[INFO] Service status overview:"
@@ -199,3 +229,4 @@ sudo systemctl --no-pager --full status ecoconnect-cam.service || true
 sudo systemctl --no-pager --full status ecoconnect-detect.service || true
 sudo systemctl --no-pager --full status ecoconnect-backend.service || true
 sudo systemctl --no-pager --full status ecoconnect-frontend.service || true
+sudo systemctl --no-pager --full status ecoconnect-kiosk.service || true
