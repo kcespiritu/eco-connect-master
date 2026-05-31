@@ -278,12 +278,8 @@ run_network_init() {
 	ensure_script_exists "$NETWORK_SCRIPT"
 
 	echo "[STEP] Running network init script"
-	if [[ "$HARDWARE_RUN_WITH_SUDO" == "1" ]]; then
-		ensure_sudo_access
-		sudo bash "$NETWORK_SCRIPT"
-	else
-		bash "$NETWORK_SCRIPT"
-	fi
+	ensure_sudo_access
+	sudo bash "$NETWORK_SCRIPT"
 }
 
 run_hardware_stack() {
