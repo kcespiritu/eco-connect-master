@@ -1,0 +1,8 @@
+apps/backend/pnpm-lock.yaml
+apps/backend/pnpm-workspace.yaml
+apps/frontend/pnpm-lock.yaml
+apps/frontend/pnpm-workspace.yaml
+bin/
+logs/
+venv/
+yolov8n.pt
