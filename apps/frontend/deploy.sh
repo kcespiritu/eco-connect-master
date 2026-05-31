@@ -8,6 +8,7 @@ AUTO_OPEN_KIOSK="${AUTO_OPEN_KIOSK:-1}"
 KIOSK_KILL_EXISTING="${KIOSK_KILL_EXISTING:-1}"
 KIOSK_BROWSER="${KIOSK_BROWSER:-}"
 KIOSK_DISPLAY="${KIOSK_DISPLAY:-:0}"
+KIOSK_LOG_FILE="${KIOSK_LOG_FILE:-}"
 
 usage() {
   cat <<'EOF'
@@ -22,7 +23,42 @@ Optional environment variables:
   KIOSK_KILL_EXISTING=1     Kill existing kiosk browser processes before launch
   KIOSK_BROWSER=chromium-browser  Optional explicit browser binary
   KIOSK_DISPLAY=:0          X display to use when DISPLAY is not already set
+  KIOSK_LOG_FILE=/path/to/log  Optional explicit log file for kiosk browser
 EOF
+}
+
+resolve_kiosk_log_file() {
+  local candidates=()
+  local runtime_dir="${XDG_RUNTIME_DIR:-}"
+  local user_tag="${SUDO_USER:-${USER:-ecoconnect}}"
+
+  if [[ -n "$KIOSK_LOG_FILE" ]]; then
+    candidates+=("$KIOSK_LOG_FILE")
+  fi
+
+  if [[ -n "$runtime_dir" ]]; then
+    candidates+=("$runtime_dir/ecoconnect-kiosk.log")
+  fi
+
+  candidates+=(
+    "/tmp/ecoconnect-kiosk-${user_tag}.log"
+    "$PWD/ecoconnect-kiosk.log"
+  )
+
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    local parent_dir
+    parent_dir="$(dirname "$candidate")"
+    mkdir -p "$parent_dir" >/dev/null 2>&1 || true
+
+    if touch "$candidate" >/dev/null 2>&1; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+
+  echo "[ERROR] Could not find a writable log file path for kiosk browser."
+  exit 1
 }
 
 stop_existing_kiosk_browser() {
@@ -78,10 +114,14 @@ launch_kiosk_browser() {
 
   stop_existing_kiosk_browser "$browser_bin"
 
+  local kiosk_log_file
+  kiosk_log_file="$(resolve_kiosk_log_file)"
+
   echo "[STEP] Launching fullscreen browser: $browser_bin -> $target_url"
+  echo "[INFO] Kiosk browser log file: $kiosk_log_file"
 
   if [[ "$browser_bin" == "firefox" ]]; then
-    nohup "$browser_bin" --kiosk "$target_url" >/tmp/ecoconnect-kiosk.log 2>&1 &
+    nohup "$browser_bin" --kiosk "$target_url" >"$kiosk_log_file" 2>&1 &
   else
     nohup "$browser_bin" \
       --kiosk \
@@ -89,7 +129,7 @@ launch_kiosk_browser() {
       --noerrdialogs \
       --disable-session-crashed-bubble \
       --check-for-update-interval=31536000 \
-      "$target_url" >/tmp/ecoconnect-kiosk.log 2>&1 &
+      "$target_url" >"$kiosk_log_file" 2>&1 &
   fi
 }
 

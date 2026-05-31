@@ -3,9 +3,12 @@ set -euo pipefail
 
 echo "=== EcoConnect Captive Portal START ==="
 
-DEFAULT_LAN_IF="wlp1s0"
-DEFAULT_WAN_IF="enp2s0"
-DEFAULT_AP_IP="192.168.77.1/24"
+DEFAULT_LAN_IF="wlan0"
+DEFAULT_WAN_IF="eth0"
+DEFAULT_AP_IP="10.42.0.1/24"
+NETWORK_TMP_DIR="${NETWORK_TMP_DIR:-${XDG_RUNTIME_DIR:-/tmp}}"
+HOSTAPD_CONFIG=""
+DNSMASQ_CONFIG=""
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -66,6 +69,20 @@ require_cmd ipset
 require_cmd hostapd
 require_cmd dnsmasq
 require_cmd sysctl
+require_cmd mktemp
+
+if [[ ! -d "$NETWORK_TMP_DIR" ]] || [[ ! -w "$NETWORK_TMP_DIR" ]]; then
+  NETWORK_TMP_DIR="/tmp"
+fi
+
+HOSTAPD_CONFIG="$(mktemp "$NETWORK_TMP_DIR/ecoconnect-hostapd.XXXXXX.conf")"
+DNSMASQ_CONFIG="$(mktemp "$NETWORK_TMP_DIR/ecoconnect-dnsmasq.XXXXXX.conf")"
+
+cleanup_tmp_files() {
+  rm -f "$HOSTAPD_CONFIG" "$DNSMASQ_CONFIG" >/dev/null 2>&1 || true
+}
+
+trap cleanup_tmp_files EXIT
 
 WAN_IF="${WAN_IF:-$DEFAULT_WAN_IF}"
 if [[ -z "$WAN_IF" ]] || ! iface_exists "$WAN_IF"; then
@@ -139,7 +156,7 @@ ip addr replace "$AP_IP" dev "$LAN_IF"
 # -----------------------------
 # HOSTAPD CONFIG (AUTO)
 # -----------------------------
-cat > /tmp/hostapd.conf <<EOF
+cat > "$HOSTAPD_CONFIG" <<EOF
 interface=$LAN_IF
 driver=nl80211
 ssid=EcoConnect
@@ -150,12 +167,12 @@ wmm_enabled=1
 EOF
 
 # START HOSTAPD (NON-BLOCKING)
-hostapd -B /tmp/hostapd.conf
+hostapd -B "$HOSTAPD_CONFIG"
 
 # -----------------------------
 # DNSMASQ CONFIG (AUTO)
 # -----------------------------
-cat > /tmp/dnsmasq.conf <<EOF
+cat > "$DNSMASQ_CONFIG" <<EOF
 interface=$LAN_IF
 bind-interfaces
 dhcp-authoritative
@@ -171,7 +188,7 @@ EOF
 pkill dnsmasq 2>/dev/null || true
 sleep 5
 
-dnsmasq -C /tmp/dnsmasq.conf \
+dnsmasq -C "$DNSMASQ_CONFIG" \
   --bind-interfaces \
   --log-dhcp \
   --rebind-localhost-ok \
