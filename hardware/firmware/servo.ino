@@ -1,4 +1,5 @@
-// Insert servo.ino script here <AGENT DO NOT TOUCH>#include <Servo.h>
+// Insert servo.ino script here <AGENT DO NOT TOUCH>
+#include <Servo.h>
 
 Servo barrierServo;
 
