@@ -37,6 +37,7 @@ void loop() {
     if (cmd == 'o') {
       barrierServo.write(openPos);
       currentPos = openPos;
+      lastKeepAliveMs = millis();  // reset timer so keep-alive doesn't fire right after close
       Serial.println("OPEN");
     }
 
@@ -68,8 +69,9 @@ void loop() {
   }
 
   // Small pulse around the current position to keep power banks awake.
+  // Skip while gate is open — movement during an active drop could interfere.
   unsigned long now = millis();
-  if (now - lastKeepAliveMs >= keepAliveIntervalMs) {
+  if (currentPos != openPos && now - lastKeepAliveMs >= keepAliveIntervalMs) {
     lastKeepAliveMs = now;
 
     int direction = keepAlivePositive ? keepAliveStep : -keepAliveStep;
