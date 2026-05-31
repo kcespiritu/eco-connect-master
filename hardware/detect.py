@@ -10,6 +10,7 @@ model = YOLO("yolov8n.pt")
 # Backend configuration
 BACKEND_URL = "http://10.42.0.1:3000/api"
 DETECTION_ENDPOINT = f"{BACKEND_URL}/process/admin/decision"
+FRAME_PATH = os.getenv("SHARED_FRAME_PATH", "/tmp/frame.jpg")
 
 # Tracking to avoid duplicate detections
 last_detection_time = 0
@@ -20,7 +21,7 @@ print(f"Backend: {BACKEND_URL}")
 
 # Optional: save output frames
 save_output = False
-output_dir = "output_frames"
+output_dir = os.getenv("DETECT_OUTPUT_DIR", "output_frames")
 
 if save_output:
     os.makedirs(output_dir, exist_ok=True)
@@ -30,7 +31,7 @@ frame_count = 0
 while True:
 
     # Read latest frame
-    frame = cv2.imread("/tmp/frame.jpg")
+    frame = cv2.imread(FRAME_PATH)
 
     if frame is None:
         time.sleep(0.1)

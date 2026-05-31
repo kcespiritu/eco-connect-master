@@ -4,6 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_USER="${APP_USER:-${SUDO_USER:-$USER}}"
 STARTUP_ENV_FILE="${STARTUP_ENV_FILE:-/etc/default/ecoconnect}"
+PERSIST_BASE_DIR="${PERSIST_BASE_DIR:-/var/lib/ecoconnect}"
+PERSIST_RUNTIME_DIR="${PERSIST_RUNTIME_DIR:-${PERSIST_BASE_DIR}/runtime}"
+PERSIST_DB_PATH="${PERSIST_DB_PATH:-${PERSIST_BASE_DIR}/ecoconnect.db}"
+PERSIST_FRAME_PATH="${PERSIST_FRAME_PATH:-${PERSIST_BASE_DIR}/frame.jpg}"
+PERSIST_DETECT_OUTPUT_DIR="${PERSIST_DETECT_OUTPUT_DIR:-${PERSIST_BASE_DIR}/output_frames}"
 
 if [[ "$(uname -s)" != "Linux" ]]; then
   echo "[ERROR] Startup auto-configuration currently supports Linux/systemd only."
@@ -26,6 +31,19 @@ install_unit() {
 
   echo "[STEP] Installing ${unit_name}"
   printf "%s\n" "$unit_body" | sudo tee "/etc/systemd/system/${unit_name}" >/dev/null
+}
+
+ensure_env_key() {
+  local file_path="$1"
+  local key="$2"
+  local value="$3"
+
+  if sudo grep -q "^${key}=" "$file_path"; then
+    return 0
+  fi
+
+  echo "[STEP] Adding ${key} to ${file_path}"
+  echo "${key}=${value}" | sudo tee -a "$file_path" >/dev/null
 }
 
 network_unit="[Unit]
@@ -98,6 +116,7 @@ Type=simple
 User=${APP_USER}
 WorkingDirectory=${ROOT_DIR}/apps/backend
 Environment=NODE_ENV=production
+EnvironmentFile=-${STARTUP_ENV_FILE}
 EnvironmentFile=-${ROOT_DIR}/apps/backend/.env
 ExecStart=/usr/bin/env node src/server.js
 Restart=always
@@ -127,6 +146,9 @@ install_unit "ecoconnect-detect.service" "$detect_unit"
 install_unit "ecoconnect-backend.service" "$backend_unit"
 install_unit "ecoconnect-frontend.service" "$frontend_unit"
 
+echo "[STEP] Ensuring persistent directories"
+sudo mkdir -p "$PERSIST_BASE_DIR" "$PERSIST_RUNTIME_DIR" "$PERSIST_DETECT_OUTPUT_DIR"
+
 if [[ ! -f "$STARTUP_ENV_FILE" ]]; then
   echo "[STEP] Creating startup env file at ${STARTUP_ENV_FILE}"
   sudo tee "$STARTUP_ENV_FILE" >/dev/null <<'EOF'
@@ -134,8 +156,19 @@ if [[ ! -f "$STARTUP_ENV_FILE" ]]; then
 # Example:
 # DETECT_PYTHON=/opt/ecoconnect/.venv/bin/python
 DETECT_PYTHON=
+
+# Persistent data paths
+NETWORK_TMP_DIR=/var/lib/ecoconnect/runtime
+SHARED_FRAME_PATH=/var/lib/ecoconnect/frame.jpg
+DETECT_OUTPUT_DIR=/var/lib/ecoconnect/output_frames
+ECOCONNECT_DB_PATH=/var/lib/ecoconnect/ecoconnect.db
 EOF
 fi
+
+ensure_env_key "$STARTUP_ENV_FILE" "NETWORK_TMP_DIR" "/var/lib/ecoconnect/runtime"
+ensure_env_key "$STARTUP_ENV_FILE" "SHARED_FRAME_PATH" "/var/lib/ecoconnect/frame.jpg"
+ensure_env_key "$STARTUP_ENV_FILE" "DETECT_OUTPUT_DIR" "/var/lib/ecoconnect/output_frames"
+ensure_env_key "$STARTUP_ENV_FILE" "ECOCONNECT_DB_PATH" "/var/lib/ecoconnect/ecoconnect.db"
 
 echo "[STEP] Reloading systemd daemon"
 sudo systemctl daemon-reload

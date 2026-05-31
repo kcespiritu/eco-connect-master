@@ -6,7 +6,7 @@ echo "=== EcoConnect Captive Portal START ==="
 DEFAULT_LAN_IF="wlan0"
 DEFAULT_WAN_IF="eth0"
 DEFAULT_AP_IP="10.42.0.1/24"
-NETWORK_TMP_DIR="${NETWORK_TMP_DIR:-${XDG_RUNTIME_DIR:-/tmp}}"
+NETWORK_TMP_DIR="${NETWORK_TMP_DIR:-/var/lib/ecoconnect/runtime}"
 HOSTAPD_CONFIG=""
 DNSMASQ_CONFIG=""
 
@@ -70,6 +70,12 @@ require_cmd hostapd
 require_cmd dnsmasq
 require_cmd sysctl
 require_cmd mktemp
+
+mkdir -p "$NETWORK_TMP_DIR" >/dev/null 2>&1 || true
+
+if [[ ! -d "$NETWORK_TMP_DIR" ]] || [[ ! -w "$NETWORK_TMP_DIR" ]]; then
+  NETWORK_TMP_DIR="${XDG_RUNTIME_DIR:-/tmp}"
+fi
 
 if [[ ! -d "$NETWORK_TMP_DIR" ]] || [[ ! -w "$NETWORK_TMP_DIR" ]]; then
   NETWORK_TMP_DIR="/tmp"

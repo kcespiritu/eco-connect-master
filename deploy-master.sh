@@ -19,6 +19,7 @@ DETECT_SCRIPT="$HARDWARE_DIR/detect.py"
 DETECT_VENV_PATH="${DETECT_VENV_PATH:-}"
 DETECT_PYTHON="${DETECT_PYTHON:-}"
 HARDWARE_RUN_WITH_SUDO="${HARDWARE_RUN_WITH_SUDO:-1}"
+HARDWARE_SOFT_FAIL_OPTIONAL="${HARDWARE_SOFT_FAIL_OPTIONAL:-1}"
 MASTER_RUNTIME_DIR="${MASTER_RUNTIME_DIR:-$ROOT_DIR/.runtime}"
 MASTER_LOG_DIR="${MASTER_LOG_DIR:-$ROOT_DIR/logs}"
 STARTUP_SCRIPT="$ROOT_DIR/configure-startup.sh"
@@ -64,6 +65,8 @@ Notes:
 	- Hardware process logs/pids default to:
 		MASTER_LOG_DIR=$ROOT_DIR/logs
 		MASTER_RUNTIME_DIR=$ROOT_DIR/.runtime
+	- Optional hardware soft-fail behavior (default enabled):
+		HARDWARE_SOFT_FAIL_OPTIONAL=1  # cam.py and detect.py failures won't stop deploy
 	- detect.py interpreter selection order:
 		DETECT_PYTHON (if set) -> DETECT_VENV_PATH/bin/python -> python3 -> python
 	- You can pass frontend env vars inline, e.g.:
@@ -117,12 +120,17 @@ resolve_detect_python() {
 	fi
 
 	if [[ -n "$DETECT_VENV_PATH" ]]; then
+		if [[ -x "$DETECT_VENV_PATH/bin/python3" ]]; then
+			echo "$DETECT_VENV_PATH/bin/python3"
+			return 0
+		fi
+
 		if [[ -x "$DETECT_VENV_PATH/bin/python" ]]; then
 			echo "$DETECT_VENV_PATH/bin/python"
 			return 0
 		fi
 
-		echo "[ERROR] DETECT_VENV_PATH is set but python not found: $DETECT_VENV_PATH/bin/python"
+		echo "[ERROR] DETECT_VENV_PATH is set but python not found: $DETECT_VENV_PATH/bin/python3 or $DETECT_VENV_PATH/bin/python"
 		exit 1
 	fi
 
@@ -178,6 +186,23 @@ start_managed_process() {
 
 	echo "[INFO] $name started (PID: $pid)"
 	echo "[INFO] Log file: $log_file"
+}
+
+start_managed_process_optional() {
+	local name="$1"
+	shift
+
+	if [[ "$HARDWARE_SOFT_FAIL_OPTIONAL" != "1" ]]; then
+		start_managed_process "$name" "$@"
+		return 0
+	fi
+
+	if ! start_managed_process "$name" "$@"; then
+		echo "[WARN] Optional process '$name' failed to start; continuing deploy"
+		return 1
+	fi
+
+	return 0
 }
 
 stop_managed_process() {
@@ -263,23 +288,35 @@ run_network_init() {
 
 run_hardware_stack() {
 	ensure_script_exists "$IR_SCRIPT"
-	ensure_script_exists "$CAM_SCRIPT"
-	ensure_script_exists "$DETECT_SCRIPT"
+
+	if [[ ! -f "$CAM_SCRIPT" ]]; then
+		echo "[WARN] Optional script missing: $CAM_SCRIPT"
+	fi
+
+	if [[ ! -f "$DETECT_SCRIPT" ]]; then
+		echo "[WARN] Optional script missing: $DETECT_SCRIPT"
+	fi
 
 	run_network_init
 
 	if [[ "$HARDWARE_RUN_WITH_SUDO" == "1" ]]; then
 		ensure_sudo_access
 		start_managed_process "hardware-ir" sudo -n python3 "$IR_SCRIPT"
-		start_managed_process "hardware-cam" sudo -n python3 "$CAM_SCRIPT"
+		if [[ -f "$CAM_SCRIPT" ]]; then
+			start_managed_process_optional "hardware-cam" sudo -n python3 "$CAM_SCRIPT"
+		fi
 	else
 		start_managed_process "hardware-ir" python3 "$IR_SCRIPT"
-		start_managed_process "hardware-cam" python3 "$CAM_SCRIPT"
+		if [[ -f "$CAM_SCRIPT" ]]; then
+			start_managed_process_optional "hardware-cam" python3 "$CAM_SCRIPT"
+		fi
 	fi
 
-	local detect_python
-	detect_python="$(resolve_detect_python)"
-	start_managed_process "hardware-detect" "$detect_python" "$DETECT_SCRIPT"
+	if [[ -f "$DETECT_SCRIPT" ]]; then
+		local detect_python
+		detect_python="$(resolve_detect_python)"
+		start_managed_process_optional "hardware-detect" "$detect_python" "$DETECT_SCRIPT"
+	fi
 }
 
 run_backend() {

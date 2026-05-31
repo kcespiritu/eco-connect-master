@@ -2,7 +2,7 @@ const sqlite3 = require("sqlite3").verbose();
 const path = require("path");
 const fs = require("fs");
 
-const dbPath = path.join(__dirname, "../../storage/ecoconnect.db");
+const dbPath = process.env.ECOCONNECT_DB_PATH || process.env.DB_PATH || path.join(__dirname, "../../storage/ecoconnect.db");
 const dbDir = path.dirname(dbPath);
 
 if (!fs.existsSync(dbDir)) {
