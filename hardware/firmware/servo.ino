@@ -8,9 +8,9 @@ int closedPos = 10;
 int openPos = 180;
 int currentPos = 10;
 
-const unsigned long keepAliveIntervalMs = 25000;
-const int keepAliveStep = 1;
-const unsigned long keepAlivePulseMs = 120;
+const unsigned long keepAliveIntervalMs = 5000;  // every 20s — tighter margin for power banks
+const int keepAliveStep = 8;                       // 8 deg is enough to draw current without being visible
+const unsigned long keepAlivePulseMs = 350;        // 350ms lets the servo physically move and load
 
 unsigned long lastKeepAliveMs = 0;
 bool keepAlivePositive = true;
@@ -71,14 +71,28 @@ void loop() {
   if (now - lastKeepAliveMs >= keepAliveIntervalMs) {
     lastKeepAliveMs = now;
 
-    int pulseTarget = currentPos + (keepAlivePositive ? keepAliveStep : -keepAliveStep);
-    if (pulseTarget > 180) pulseTarget = 180;
-    if (pulseTarget < 0) pulseTarget = 0;
+    int direction = keepAlivePositive ? keepAliveStep : -keepAliveStep;
+    int pulseTarget = currentPos + direction;
+    if (pulseTarget > 180) pulseTarget = currentPos - keepAliveStep;  // bounce back if at ceiling
+    if (pulseTarget < 0)   pulseTarget = currentPos + keepAliveStep;  // bounce back if at floor
+    if (pulseTarget > 180) pulseTarget = 180;  // hard clamp
+    if (pulseTarget < 0)   pulseTarget = 0;
+
+    Serial.print("[KEEPALIVE] t=");
+    Serial.print(now);
+    Serial.print("ms  cur=");
+    Serial.print(currentPos);
+    Serial.print("  pulse=");
+    Serial.print(pulseTarget);
+    Serial.print("  dir=");
+    Serial.println(keepAlivePositive ? "+" : "-");
 
     barrierServo.write(pulseTarget);
     delay(keepAlivePulseMs);
     barrierServo.write(currentPos);
 
     keepAlivePositive = !keepAlivePositive;
+
+    Serial.println("[KEEPALIVE] done");
   }
 }
