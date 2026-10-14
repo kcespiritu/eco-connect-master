@@ -1,4 +1,4 @@
-// Barrier gate controller.
+// Barrier gate controller for the Wemos D1 R2 (ESP8266). Servo signal on D5 (GPIO14).
 //
 // Serial protocol at 115200 baud: 'o' open, 'c' close, '+' / '-' nudge 5 degrees,
 // 's' report current position. Starts CLOSED on boot.

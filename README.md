@@ -20,7 +20,7 @@ simpler second trigger path.
 **3. The backend owns the state.** An Express service tracks sessions, applies the reward rule, and
 persists to SQLite. It also drives the gate and controls the hotspot.
 
-**4. The gate is a servo on an Arduino.** The backend sends single-character commands over serial — `o`
+**4. The gate is a servo on a Wemos D1 R2 (ESP8266).** The backend sends single-character commands over serial — `o`
 open, `c` close, `+` / `-` nudge, `s` status. The firmware carries a keep-alive pulse every few seconds
 so the servo keeps drawing current and a USB power bank does not sleep mid-event. It skips that pulse
 while the gate is open, so it cannot interfere with a drop in progress.
@@ -32,7 +32,7 @@ detection, session countdown and sound.
 
 | Path | Contents |
 | --- | --- |
-| `hardware/` | Arduino firmware (servo gate), YOLO bottle detection, IR trigger, hotspot and captive-portal network setup |
+| `hardware/` | Wemos D1 R2 (ESP8266) firmware for the servo gate, YOLO bottle detection, IR trigger, hotspot and captive-portal network setup |
 | `apps/backend/` | Express API — sessions, rewards, gate control, hotspot control, SQLite |
 | `apps/frontend/` | React kiosk UI — captive portal, display, admin test page |
 | `apps/backend/deploy/systemd/` | Boot-persistent units for the backend and detector |
@@ -101,5 +101,5 @@ and hotspot behaviour.
 
 ## Stack
 
-Raspberry Pi · Arduino · Python (Ultralytics YOLOv8, OpenCV, gpiozero) · Node.js and Express · SQLite ·
+Raspberry Pi · Wemos D1 R2 (ESP8266) · Python (Ultralytics YOLOv8, OpenCV, gpiozero) · Node.js and Express · SQLite ·
 React with Vite and Tailwind · hostapd, dnsmasq, iptables · systemd
